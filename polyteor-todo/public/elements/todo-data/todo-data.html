@@ -9,8 +9,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 -->
 
 <link rel="import" href="../../bower_components/polymer/polymer.html">
-<link rel="import" href="../../bower_components/firebase-element/firebase-collection.html">
-<link rel="import" href="../../bower_components/firebase-element/firebase-auth.html">
+<!--<link rel="import" href="../../bower_components/firebase-element/firebase-collection.html">
+<link rel="import" href="../../bower_components/firebase-element/firebase-auth.html">-->
 <link rel="import" href="../../bower_components/neon-animation/animations/scale-up-animation.html">
 <link rel="import" href="../../bower_components/neon-animation/animations/fade-out-animation.html">
 <link rel="import" href="../../bower_components/paper-dialog/paper-dialog.html">
@@ -59,7 +59,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             }
         </style>
 
-        <paper-dialog modal opened="{{!user}}">
+        <!--<paper-dialog modal opened="{{!user}}">
             <h2>Oh hai! Please sign in</h2>
             <div>
                 <div class="google-sign-in" tabindex="0" on-tap="signIn">
@@ -71,7 +71,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         <firebase-auth id="auth" location="{{location}}" provider="google" , ref="{{refauth}}" , user="{{user}}">
         </firebase-auth>
         <firebase-collection data="{{todos}}" location="{{userLocation}}">
-        </firebase-collection>
+        </firebase-collection>-->
     </template>
 
     <script>
@@ -85,14 +85,14 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         },
         properties: {
             todos: {
-                //   value: function(){
-                //     return [
-                //         {
-                //             label: 'My first todo!',
-                //             isComplete: false
-                //         }
-                //     ];
-                //   },
+                  value: function(){
+                    return [
+                        {
+                            label: 'My first todo!',
+                            isComplete: false
+                        }
+                    ];
+                  },
                 notify: true
             },
             user: {
