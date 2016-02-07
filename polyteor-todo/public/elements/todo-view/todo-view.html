@@ -23,7 +23,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
     </template>
     <script>
-(function () {
+        (function () {
     'use strict';
 
     Polymer({
@@ -44,19 +44,27 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             for (var i = 0; i < this.todos.length; i++) {
                 var todo = this.todos[i];
                 if (todo.isComplete) {
-                    this.splice('todos', i--, 1);
+                    // this.splice('todos', i--, 1);
+                    Todos.remove(todo._id);
                 }
             }
         },
         deleteTodo: function (e) {
             window.console.log('Deleting todo', e.detail);
-            this.arrayDelete('todos', e.detail.todo);
+            // this.arrayDelete('todos', e.detail.todo);
+            Todos.remove({_id: e.detail.todo._id});
         },
         addTodo: function (e) {
-            this.push('todos', {
+            Todos.insert({
                 label: e.detail.value,
-                isComplete: false
-            });
+                isComplete: false,
+                creator: Meteor.userId(),
+                private: true
+            })
+            // this.push('todos', {
+            //     label: e.detail.value,
+            //     isComplete: false
+            // });
         },
         _hide: function (filter) {
             return filter === 'completed';

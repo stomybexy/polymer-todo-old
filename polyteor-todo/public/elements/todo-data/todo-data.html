@@ -59,7 +59,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             }
         </style>
 
-        <!--<paper-dialog modal opened="{{!user}}">
+        <paper-dialog modal opened="{{!user}}">
             <h2>Oh hai! Please sign in</h2>
             <div>
                 <div class="google-sign-in" tabindex="0" on-tap="signIn">
@@ -68,6 +68,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 </div>
             </div>
         </paper-dialog>
+        <!--<h1>Todo data</h1>-->
+        <!--
         <firebase-auth id="auth" location="{{location}}" provider="google" , ref="{{refauth}}" , user="{{user}}">
         </firebase-auth>
         <firebase-collection data="{{todos}}" location="{{userLocation}}">
@@ -75,43 +77,153 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
     </template>
 
     <script>
-(function () {
+        (function () {
     'use strict';
 
     Polymer({
         is: 'todo-data',
-        listeners:{
-          'sign-out': 'signOut' 
+        listeners: {
+            'sign-out': 'signOut'
         },
         properties: {
             todos: {
-                  value: function(){
-                    return [
-                        {
-                            label: 'My first todo!',
-                            isComplete: false
-                        }
-                    ];
-                  },
-                notify: true
+                value: function () {
+                    return Todos.find().fetch();
+                },
+                notify: true,
+                type: Array
             },
             user: {
-                observer: '_userChanged'
+                observer: '_userChanged',
+                notify: true,
+                value: function(){
+                    return Meteor.user()
+                }
             },
         },
-        _userChanged: function (user) {
-            if (user) {
-                this.userLocation = [
-                    this.location, 'users', this.user.uid
-                ].join('/');
+        observers: [
+            '_dataChanged(todos.*)'
+        ],
+        created: function () {
+
+            this._receivingRemoteChanges = false;
+            this._receivingLocalChanges = false;
+
+        },
+        ready: function () {
+            var self = this;
+            
+           console.log(this.user);
+           
+           Meteor.autorun(function(){
+               self.user =  Meteor.user();
+           })
+           
+           
+            Meteor.subscribe('todos');
+
+            var cursorDef = Meteor.apply('todos', [], { returnStubValue: true });
+            console.log(cursorDef);
+            var Coll = Mongo.Collection.get(cursorDef.collName);
+            var cursor = Coll.find(cursorDef.selector || {}, {
+                sort: cursorDef.sort,
+                skip: cursorDef.skip,
+                limit: cursorDef.limit,
+                fields: cursorDef.fields
+            });
+
+            cursor.observe({
+                addedAt: function (doc, atIndex, before) {
+                    if (self.todos.length === cursor.count()) {
+                        return;
+                    }
+                    self._receivingRemoteChanges = true;
+                    self.splice('todos', atIndex, 0, doc);
+                    self._receivingRemoteChanges = false;
+
+                },
+                changedAt: function (newDoc, oldDoc, atIndex) {
+
+                    self._receivingRemoteChanges = true;
+                    self.splice('todos', atIndex, 1, newDoc);
+
+                    self._receivingRemoteChanges = false;
+                },
+                removedAt: function (oldDoc, atIndex) {
+                    self._receivingRemoteChanges = true;
+                    self.splice('todos', atIndex, 1);
+                    self._receivingRemoteChanges = false;
+                },
+                movedTo: function (doc, fromIndex, toIndex, before) {
+                    self._receivingRemoteChanges = true;
+                    self.splice('todos', fromIndex, 1);
+                    self.splice('todos', toIndex, 0, doc);
+
+                    self._receivingRemoteChanges = false;
+                }
+            })
+        },
+        _dataChanged: function (change) {
+            if (this._receivingRemoteChanges || this._receivingLocalChanges) {
+                return;
             }
+            console.log('todos changed', change);
+            this._localDataChanged(change);
+        },
+        _localDataChanged(change) {
+            var pathParts = change.path.split('.');
+            // We don't care about self-changes, and we don't respond directly to
+            // length changes:
+            if (pathParts.length < 2 || pathParts[1] === 'length') {
+                return;
+            }
+            // Handle splices via the adoption process. `indexSplices` is known to
+            // sometimes be null, so guard against that.
+            if (pathParts[1] === 'splices') {
+                // this._adoptSplices(change.value.indexSplices);
+                return;
+            }
+            // Otherwise, the change is happening to a sub-path of the array.
+            this._applySubPathChange(change);
+
+        },
+        _applySubPathChange: function (change) {
+            var path = change.path.split('.');
+            var key = path[1];
+            var value = Polymer.Collection.get(change.base).getItem(key);
+            var setModifier = {};
+            path.splice(0, 2);
+            console.log('remote key', path);
+            setModifier[path] = change.value;
+            console.log(setModifier);
+            var res = Todos.update({
+                _id: value._id
+            }, {
+                    $set: setModifier
+                })
+            console.log('result of update', res);
+        },
+        _userChanged: function (user) {
+          console.log('user', user);
         },
         signIn: function () {
-            this.$.auth.login();
+            var self = this;
+            // this.$.auth.login();
+             console.log('Loging....')
+            Meteor.loginWithGoogle({
+                
+            }, function (err) {
+                if (err)
+                    console.log(err);
+                //  console.log('User', Meteor.user())
+                 self.user = Meteor.user()
+                 console.log(self.user);
+            });
         },
         signOut: function () {
-            this.$.auth.logout();
-            this.user = null;
+            // this.$.auth.logout();
+            // this.user = null;
+            Meteor.logout();
         }
     });
 })();
