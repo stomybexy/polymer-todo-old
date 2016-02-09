@@ -23,7 +23,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
     </template>
     <script>
-        (function () {
+(function () {
     'use strict';
 
     Polymer({
@@ -41,18 +41,20 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         },
         clearTodos: function () {
             window.console.log('TODO view cleanring todos...');
-            for (var i = 0; i < this.todos.length; i++) {
-                var todo = this.todos[i];
-                if (todo.isComplete) {
-                    // this.splice('todos', i--, 1);
-                    Todos.remove(todo._id);
-                }
-            }
+            _.each(_.filter(this.todos, (todo) => todo.isComplete), (todo)=> Todos.remove(todo._id));
+
+            // for (var i = 0; i < this.todos.length; i++) {
+            //     var todo = this.todos[i];
+            //     if (todo.isComplete) {
+            //         // this.splice('todos', i--, 1);
+            //         Todos.remove(todo._id);
+            //     }
+            // }
         },
         deleteTodo: function (e) {
             window.console.log('Deleting todo', e.detail);
             // this.arrayDelete('todos', e.detail.todo);
-            Todos.remove({_id: e.detail.todo._id});
+            Todos.remove({ _id: e.detail.todo._id });
         },
         addTodo: function (e) {
             Todos.insert({

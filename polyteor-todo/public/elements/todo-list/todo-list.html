@@ -49,32 +49,32 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
     </template>
     <script>
-        Polymer({
-      is: 'todo-list',
-      properties: {
+Polymer({
+    is: 'todo-list',
+    properties: {
         todos: Array,
         filterBy: String
-      },
-      _todosEmpty: function(length) {
+    },
+    _todosEmpty: function (length) {
         return !!length;
-      },
-      _computeFilter: function(filterBy) {
+    },
+    _computeFilter: function (filterBy) {
         if (filterBy) {
-          // If filterBy is 'all', return a filter that always returns
-          // the todo
-          console.log('Filter', filterBy);
-          if (filterBy === 'all') {
-            return function() {
-              return true;
+            // If filterBy is 'all', return a filter that always returns
+            // the todo
+            console.log('Filter', filterBy);
+            if (filterBy === 'all') {
+                return function () {
+                    return true;
+                };
+            }
+            // Handle 'completed', or its inverse, 'active'
+            var ifComplete = (filterBy === 'completed');
+            return function (item) {
+                return item.isComplete === ifComplete;
             };
-          }
-          // Handle 'completed', or its inverse, 'active'
-          var ifComplete = (filterBy === 'completed');
-          return function(item) {
-            return item.isComplete === ifComplete;
-          };
         }
-      }
-    });
+    }
+});
     </script>
 </dom-module>

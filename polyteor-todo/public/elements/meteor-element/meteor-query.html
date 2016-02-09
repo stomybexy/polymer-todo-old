@@ -1,0 +1,194 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+
+<dom-module id="meteor-query">
+    <script>
+(function () {
+    'use strict';
+
+    Polymer({
+        is: 'meteor-query',
+        properties: {
+            data: {
+                type: Array,
+                value: function () {
+                    return [];
+                },
+                notify: true
+            },
+
+            query: {
+                type: Object,
+                notify: true
+            }
+        },
+        observers: [
+            '_dataChanged(data.*)'
+        ],
+        created: function () {
+
+            this._receivingRemoteChanges = false;
+            this._receivingLocalChanges = false;
+
+        },
+        ready: function () {
+
+            var self = this;
+            var opt = self.query.find();
+            var cursor = Mongo.Collection.get(self.query.collName)
+                .find(opt.selector || {}, {
+                    sort: opt.sort,
+                    fields: opt.fields,
+                    transform: function (doc) {
+                        if (_.isFunction(opt.transform)) {
+                            doc = opt.transform(doc);
+                        }
+                        _.each(self.query.children, (child) => {
+                            self._runQuery.call(self, child, doc)
+                        })
+                        return doc;
+                    }
+                });
+            self.data = cursor.fetch();
+            Tracker.autorun(function () {
+
+                cursor.observe({
+                    addedAt: function (doc, atIndex, before) {
+                        if (self.data.length === cursor.count()) {
+                            return;
+                        }
+                        self._receivingRemoteChanges = true;
+                        self.splice('data', atIndex, 0, doc);
+                        self._receivingRemoteChanges = false;
+
+                    },
+                    changedAt: function (newDoc, oldDoc, atIndex) {
+
+                        self._receivingRemoteChanges = true;
+                        self.splice('data', atIndex, 1, newDoc);
+
+                        self._receivingRemoteChanges = false;
+                    },
+                    removedAt: function (oldDoc, atIndex) {
+                        self._receivingRemoteChanges = true;
+                        self.splice('data', atIndex, 1);
+                        self._receivingRemoteChanges = false;
+                    },
+                    movedTo: function (doc, fromIndex, toIndex, before) {
+                        self._receivingRemoteChanges = true;
+                        self.splice('data', fromIndex, 1);
+                        self.splice('data', toIndex, 0, doc);
+
+                        self._receivingRemoteChanges = false;
+                    }
+                })
+            })
+        },
+        _runQuery: function (query, obj) {
+            var self = this;
+            var args = [].slice.call(arguments);
+            args.splice(0,1, obj);
+            var opt = query.find.apply(this, args)
+            var cursor = Mongo.Collection.get(query.collName)
+                .find(opt.selector || {}, {
+                    sort: opt.sort,
+                    fields: opt.fields,
+                    transform: function (doc) {
+                        if (_.isFunction(opt.transform)) {
+                            doc = opt.transform(doc);
+                        }
+                        _.each(query.children, (child) => {
+                            args.splice(0,0, child, doc);
+                            self._runQuery.aplly(self, args);
+                        })
+                        return doc;
+                    }
+                })
+            obj[query.name] = cursor.fetch();
+            Tracker.autorun(function () {
+                cursor.observe({
+                    addedAt: function (doc, atIndex, before) {
+                        if (obj[query.name].length === cursor.count()) {
+                            return;
+                        }
+
+                        obj[query.name].splice(atIndex, 0, doc);
+
+
+                    },
+                    changedAt: function (newDoc, oldDoc, atIndex) {
+
+                        console.log('Changed from children...', newDoc, atIndex)
+                        obj[query.name].splice(atIndex, 1, newDoc);
+
+                    },
+                    removedAt: function (oldDoc, atIndex) {
+
+                        obj[query.name].splice(atIndex, 1);
+
+                    },
+                    movedTo: function (doc, fromIndex, toIndex, before) {
+
+                        obj[query.name].splice(fromIndex, 1);
+                        obj[query.name].splice(toIndex, 0, doc);
+
+                    }
+
+                })
+            })
+
+
+        },
+        _dataChanged: function (change) {
+            if (this._receivingRemoteChanges || this._receivingLocalChanges) {
+                return;
+            }
+            console.log('data changed', change);
+            this._localDataChanged(change);
+        },
+        _localDataChanged(change) {
+            var pathParts = change.path.split('.');
+            // We don't care about self-changes, and we don't respond directly to
+            // length changes:
+            if (pathParts.length < 2 || pathParts[1] === 'length') {
+                return;
+            }
+            // Handle splices via the adoption process. `indexSplices` is known to
+            // sometimes be null, so guard against that.
+            if (pathParts[1] === 'splices') {
+                // this._adoptSplices(change.value.indexSplices);
+                return;
+            }
+            // Otherwise, the change is happening to a sub-path of the array.
+            this._applySubPathChange(change);
+
+        },
+        _applySubPathChange: function (change) {
+            var path = change.path.split('.');
+            var key = path[1];
+            var value = Polymer.Collection.get(change.base).getItem(key);
+            var setModifier = {};
+            path.splice(0, 2);
+            console.log('remote key', path);
+            setModifier[path] = change.value;
+            console.log(setModifier);
+            var res = Mongo.Collection.get(this.query.collName).update({
+                _id: value._id
+            }, {
+                    $set: setModifier
+                })
+            console.log('result of update', res);
+        }
+    });
+})();
+    </script>
+</dom-module>
