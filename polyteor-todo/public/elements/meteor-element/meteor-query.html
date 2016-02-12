@@ -29,6 +29,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             query: {
                 type: Object,
                 notify: true
+            },
+            _unsupportedPath: {
+                type: Array,
+                value: []
             }
         },
         observers: [
@@ -43,6 +47,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         ready: function () {
 
             var self = this;
+            self._unsupportedPath = _.pluck(self.query.children, 'name');
+            console.log('Unsupported path', self._unsupportedPath);
             var opt = self.query.find();
             var cursor = Mongo.Collection.get(self.query.collName)
                 .find(opt.selector || {}, {
@@ -59,44 +65,44 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                     }
                 });
             self.data = cursor.fetch();
-            Tracker.autorun(function () {
+            // Tracker.autorun(function () {
 
-                cursor.observe({
-                    addedAt: function (doc, atIndex, before) {
-                        if (self.data.length === cursor.count()) {
-                            return;
-                        }
-                        self._receivingRemoteChanges = true;
-                        self.splice('data', atIndex, 0, doc);
-                        self._receivingRemoteChanges = false;
-
-                    },
-                    changedAt: function (newDoc, oldDoc, atIndex) {
-
-                        self._receivingRemoteChanges = true;
-                        self.splice('data', atIndex, 1, newDoc);
-
-                        self._receivingRemoteChanges = false;
-                    },
-                    removedAt: function (oldDoc, atIndex) {
-                        self._receivingRemoteChanges = true;
-                        self.splice('data', atIndex, 1);
-                        self._receivingRemoteChanges = false;
-                    },
-                    movedTo: function (doc, fromIndex, toIndex, before) {
-                        self._receivingRemoteChanges = true;
-                        self.splice('data', fromIndex, 1);
-                        self.splice('data', toIndex, 0, doc);
-
-                        self._receivingRemoteChanges = false;
+            cursor.observe({
+                addedAt: function (doc, atIndex, before) {
+                    if (self.data.length === cursor.count()) {
+                        return;
                     }
-                })
+                    self._receivingRemoteChanges = true;
+                    self.splice('data', atIndex, 0, doc);
+                    self._receivingRemoteChanges = false;
+
+                },
+                changedAt: function (newDoc, oldDoc, atIndex) {
+
+                    self._receivingRemoteChanges = true;
+                    self.splice('data', atIndex, 1, newDoc);
+
+                    self._receivingRemoteChanges = false;
+                },
+                removedAt: function (oldDoc, atIndex) {
+                    self._receivingRemoteChanges = true;
+                    self.splice('data', atIndex, 1);
+                    self._receivingRemoteChanges = false;
+                },
+                movedTo: function (doc, fromIndex, toIndex, before) {
+                    self._receivingRemoteChanges = true;
+                    self.splice('data', fromIndex, 1);
+                    self.splice('data', toIndex, 0, doc);
+
+                    self._receivingRemoteChanges = false;
+                }
             })
+            // })
         },
         _runQuery: function (query, obj) {
             var self = this;
             var args = [].slice.call(arguments);
-            args.splice(0,1, obj);
+            args.splice(0, 1, obj);
             var opt = query.find.apply(this, args)
             var cursor = Mongo.Collection.get(query.collName)
                 .find(opt.selector || {}, {
@@ -107,16 +113,34 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                             doc = opt.transform(doc);
                         }
                         _.each(query.children, (child) => {
-                            args.splice(0,0, child, doc);
+                            args.splice(0, 0, child, doc);
                             self._runQuery.aplly(self, args);
                         })
                         return doc;
                     }
                 })
-            obj[query.name] = cursor.fetch();
-            Tracker.autorun(function () {
+            obj[query.name] = query.single ? cursor.fetch()[0] : cursor.fetch();
+            // Tracker.autorun(function () {
+            if (query.single) {
+                cursor.observe({
+                    added: function (doc) {
+                        if (obj[query.name]) {
+                            return;
+                        }
+                        obj[query.name] = doc;
+                    },
+                    changed: function (doc) {
+                        obj[query.name] = doc;
+
+                    },
+                    removed: function (doc) {
+                        obj[query.name] = undefined;
+                    }
+                })
+            } else {
                 cursor.observe({
                     addedAt: function (doc, atIndex, before) {
+
                         if (obj[query.name].length === cursor.count()) {
                             return;
                         }
@@ -126,6 +150,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
                     },
                     changedAt: function (newDoc, oldDoc, atIndex) {
+
 
                         console.log('Changed from children...', newDoc, atIndex)
                         obj[query.name].splice(atIndex, 1, newDoc);
@@ -144,7 +169,8 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                     }
 
                 })
-            })
+            }
+            // })
 
 
         },
@@ -174,12 +200,29 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         },
         _applySubPathChange: function (change) {
             var path = change.path.split('.');
+
             var key = path[1];
-            var value = Polymer.Collection.get(change.base).getItem(key);
-            var setModifier = {};
             path.splice(0, 2);
-            console.log('remote key', path);
-            setModifier[path] = change.value;
+
+            if (_.contains(this._unsupportedPath, path[0])) {
+                return console.log('Unspported path for autoupdate', path[0]);
+            }
+
+            var remoteKey = path.join('.');
+            console.log('key', key)
+            console.log('remote key', remoteKey);
+
+            if (remoteKey.indexOf('#') > -1) {
+                return console.log('Unsupported autoupdate with this path. Update manually');
+            }
+
+            var value = Polymer.Collection.get(change.base).getItem(key);
+            console.log('doc changed', value)
+
+            var setModifier = {};
+
+
+            setModifier[remoteKey] = change.value;
             console.log(setModifier);
             var res = Mongo.Collection.get(this.query.collName).update({
                 _id: value._id

@@ -82,9 +82,17 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
             <paper-input id="[[_computeLabelId(todo.uid)]]" class="flex" value="{{todo.label}}" no-label-float on-keypress="_checkConfirmation"></paper-input>
 
+             <paper-input value="{{todo.user.profile.name}}" class="flex" label="Owner"></paper-input>
+            
             <paper-icon-button icon="todo-icons:delete" class="btn-cancel" aria-label="Delete Todo" tabindex="0" on-tap="_onDelete">
             </paper-icon-button>
 
+        </paper-material>
+        <paper-material elevation="1">
+            <template is="dom-repeat" items="{{todo.comments}}" as="comment" >
+                
+                <paper-input value="{{comment.value}}" class="flex"></paper-input>
+            </template>
         </paper-material>
 
     </template>

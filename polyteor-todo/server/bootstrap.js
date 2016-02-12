@@ -4,22 +4,63 @@ Meteor.startup(() => {
         var todos = [
             {
                 label: 'Responsive Web App boilerplate',
-                isComplete: false
+                isComplete: false,
+                x:{
+                    y: 'test 1'
+                },
+                owner: 'focoFFZm452d9mM5S'
             },
             {
                 label: 'Iron Elements and Paper Elements',
-                isComplete: false
+                isComplete: false,
+                 x:{
+                    y: 'test 2'
+                },
+                owner: 'focoFFZm452d9mM5S'
             },
             {
                 label: 'End-to-end Build Tooling (including Vulcanize)',
-                isComplete: false
+                isComplete: false,
+                 x:{
+                    y: 'test 3'
+                },
+                owner: '3X6e82h2otx52QtEN'
             }
         ];
 
         todos.forEach((todo) => Todos.insert(todo));
     }
-    
-    accountConfig();
+
+    if (Comments.find().count() === 0) {
+        Todos.find().forEach((todo) => {
+            var data = [
+                {
+                    value: todo.label + ' comment 1',
+                    createdAt: new Date(),
+                    modifiedAt: new Date()
+                    , todoId: todo._id
+                }, {
+                    value: todo.label + ' comment 2',
+                    createdAt: new Date(),
+                    modifiedAt: new Date()
+                    , todoId: todo._id
+                }, {
+                    value: todo.label + ' comment 3',
+                    createdAt: new Date(),
+                    modifiedAt: new Date()
+                    , todoId: todo._id
+                }, {
+                    value: todo.label + ' comment 4',
+                    createdAt: new Date(),
+                    modifiedAt: new Date()
+                    , todoId: todo._id
+                }
+            ]
+            data.forEach((d) => Comments.insert(d)); 
+        })
+    }
+
+    accountConfig(); 
 })
 
 function accountConfig() {

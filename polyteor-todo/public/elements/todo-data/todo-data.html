@@ -61,7 +61,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             }
         </style>
 
-        <paper-dialog modal opened="{{!user}}">
+        <!--<paper-dialog modal opened="{{!user}}">
             <h2>Oh hai! Please sign in</h2>
             <div>
                 <div class="google-sign-in" tabindex="0" on-tap="signIn">
@@ -69,7 +69,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                     <span class="google-sign-in-label" on-tap="signIn">Google</span>
                 </div>
             </div>
-        </paper-dialog>
+        </paper-dialog>-->
         <!--<h1>Todo data</h1>-->
         <!--
         <firebase-auth id="auth" location="{{location}}" provider="google" , ref="{{refauth}}" , user="{{user}}">
@@ -107,15 +107,26 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                         collName: 'todos',
                         children: [
                             {
-                                find: function () {
+                                find: function (todo) {
                                     return {
                                        selector: {
-                                          label: 'AWESOME'
+                                           todoId: todo._id
                                        }
                                     }
                                 },
-                                collName: 'todos',
-                                name: 'todos'
+                                collName: 'comments',
+                                name: 'comments'
+                            },{
+                                find: function(todo){
+                                    return {
+                                        selector: {
+                                            _id: todo.owner
+                                        }
+                                    }
+                                },
+                                collName: 'users',
+                                name: 'user',
+                                single: true
                             }
                         ]
 
