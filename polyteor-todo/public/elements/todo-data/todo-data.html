@@ -76,7 +76,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         </firebase-auth>
         <firebase-collection data="{{todos}}" location="{{userLocation}}">
         </firebase-collection>-->
-        <meteor-query query="{{q}}" data="{{todos}}"></meteor-query>
+        <meteor-query query="{{query}}" data="{{todos}}"></meteor-query>
     </template>
 
     <script>
@@ -93,7 +93,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 notify: true,
                 type: Array
             },
-            q: {
+            query: {
                 value: function () {
                     return {
                         find: function () {
@@ -109,15 +109,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                             {
                                 find: function (todo) {
                                     return {
-                                       selector: {
-                                           todoId: todo._id
-                                       }
+                                        selector: {
+                                            todoId: todo._id
+                                        }
                                     }
                                 },
                                 collName: 'comments',
                                 name: 'comments'
-                            },{
-                                find: function(todo){
+                            }, {
+                                find: function (todo) {
                                     return {
                                         selector: {
                                             _id: todo.owner
@@ -131,12 +131,9 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                         ]
 
                     }
-                }
-            },
-            test: {
-                type: Object,
+                },
                 notify: true,
-                value: {}
+                // type: Object
             },
             user: {
                 observer: '_userChanged',
@@ -146,6 +143,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 }
             },
         },
+
         _userChanged: function (user) {
             console.log('user', user);
         },
@@ -166,10 +164,10 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         signOut: function () {
             // this.$.auth.logout();
             // this.user = null;
+            console.log('Logging out...');
             Meteor.logout();
-        },
-        _test: function (obj) {
-            obj.test = 'test'
+
+
         }
     });
 })();
