@@ -12,7 +12,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 <dom-module id="meteor-query">
     <script>
-(function () {
+        (function () {
     'use strict';
 
     Polymer({
@@ -23,20 +23,39 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 value: function () {
                     return [];
                 },
-                notify: true
+                notify: true,
+                readOnly: true
             },
-
+            dataAsObject:{
+                type: Object,
+                value: null,
+                readOnly: true,
+                notify: true,
+                computed: 'getSingleObject(query, data)'
+            },
             query: {
                 type: Object,
                 notify: true,
                 observer: '_onQueryChanged'
+            },
+            /**
+             * If true, verbose debugging information will be printed to the console.
+             */
+            log: {
+                type: Boolean,
+                value: false,
+                reflectToAttribute: true
+            },
+            autoupdate: {
+                type: Boolean,
+                value: false,
+                relfectToAttribute: true
             }
         },
         observers: [
             '_dataChanged(data.*)',
         ],
         created: function () {
-
             this._receivingRemoteChanges = false;
             this._receivingLocalChanges = false;
             this._unsuppportedPath = [];
@@ -47,15 +66,22 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         },
         attached: function () {
-            console.log('meteor-query was attached');
+            this._log('meteor-query was attached');
         },
 
         detached: function () {
-            console.log('meteor-query was detached');
-            
+            this._log('meteor-query was detached');
+
+        },
+        getSingleObject: function(query, data){
+           if(query.single){
+               return data[0];
+           }else{
+               return null;
+           }
         },
         _onQueryChanged: function () {
-            console.log('Query changed', this.query);
+            this._log('Query changed', this.query);
             this._stopHandles();
             this._runQuery();
         },
@@ -65,26 +91,36 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             });
         },
         _runQuery: function () {
-
+            
             var self = this;
-            self._unsupportedPath = _.pluck(self.query.children, 'name');
-            console.log('Unsupported path', self._unsupportedPath);
+            if(!_.isFunction(self.query.find)){
+                return;
+            }
+            
+            
             var opt = self.query.find();
-            var cursor = Mongo.Collection.get(self.query.collName)
+            
+            self._unsupportedPath = []
+            // _.pluck(opt.children, 'name');
+            self._log('Unsupported path', self._unsupportedPath);
+            
+            self._log('Query options', opt);
+            var cursor = Mongo.Collection.get(opt.collName)
                 .find(opt.selector || {}, {
-                    sort: opt.sort,
-                    fields: opt.fields,
+                    sort: opt.sort || undefined,
+                    fields: opt.fields || undefined,
                     transform: function (doc) {
                         if (_.isFunction(opt.transform)) {
                             doc = opt.transform(doc);
                         }
-                        _.each(self.query.children, (child) => {
+                        _.each(opt.children, (child) => {
                             self._attachChild.call(self, child, doc)
                         })
                         return doc;
                     }
                 });
-            self.data = cursor.fetch();
+                self._setData(cursor.fetch());
+            // self.data = cursor.fetch();
             // Tracker.autorun(function () {
 
             var handle = cursor.observe({
@@ -92,6 +128,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                     if (self.data.length === cursor.count()) {
                         return;
                     }
+                    
                     self._receivingRemoteChanges = true;
                     self.splice('data', atIndex, 0, doc);
                     self._receivingRemoteChanges = false;
@@ -122,10 +159,19 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         },
         _attachChild: function (query, obj) {
             var self = this;
+            
+            
+             if(!_.isFunction(query.find)){
+                return;
+            }
+            
             var args = [].slice.call(arguments);
-            args.splice(0, 1, obj);
+            this._log('Child call in attach Child with',query, args);
+            args.splice(0, 1);
             var opt = query.find.apply(this, args)
-            var cursor = Mongo.Collection.get(query.collName)
+            self._unsupportedPath =_.union(self._unsupportedPath, [opt.name]);
+            self._log('Unsupported Path', self._unsupportedPath);
+            var cursor = Mongo.Collection.get(opt.collName)
                 .find(opt.selector || {}, {
                     sort: opt.sort,
                     fields: opt.fields,
@@ -133,60 +179,60 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                         if (_.isFunction(opt.transform)) {
                             doc = opt.transform(doc);
                         }
-                        _.each(query.children, (child) => {
+                        _.each(opt.children, (child) => {
                             args.splice(0, 0, child, doc);
                             self._attachChild.aplly(self, args);
                         })
                         return doc;
                     }
                 })
-            obj[query.name] = query.single ? cursor.fetch()[0] : cursor.fetch();
+            obj[opt.name] = opt.single ? cursor.fetch()[0] : cursor.fetch();
             // Tracker.autorun(function () {
             var handle;
-            if (query.single) {
+            if (opt.single) {
                 handle = cursor.observe({
                     added: function (doc) {
-                        if (obj[query.name]) {
+                        if (obj[opt.name]) {
                             return;
                         }
-                        obj[query.name] = doc;
+                        obj[opt.name] = doc;
                     },
                     changed: function (doc) {
-                        obj[query.name] = doc;
+                        obj[opt.name] = doc;
 
                     },
                     removed: function (doc) {
-                        obj[query.name] = undefined;
+                        obj[opt.name] = undefined;
                     }
                 })
             } else {
                 handle = cursor.observe({
                     addedAt: function (doc, atIndex, before) {
 
-                        if (obj[query.name].length === cursor.count()) {
+                        if (obj[opt.name].length === cursor.count()) {
                             return;
                         }
 
-                        obj[query.name].splice(atIndex, 0, doc);
+                        obj[opt.name].splice(atIndex, 0, doc);
 
 
                     },
                     changedAt: function (newDoc, oldDoc, atIndex) {
 
 
-                        console.log('Changed from children...', newDoc, atIndex)
-                        obj[query.name].splice(atIndex, 1, newDoc);
+                        self._log('Changed from children...', newDoc, atIndex)
+                        obj[opt.name].splice(atIndex, 1, newDoc);
 
                     },
                     removedAt: function (oldDoc, atIndex) {
 
-                        obj[query.name].splice(atIndex, 1);
+                        obj[opt.name].splice(atIndex, 1);
 
                     },
                     movedTo: function (doc, fromIndex, toIndex, before) {
 
-                        obj[query.name].splice(fromIndex, 1);
-                        obj[query.name].splice(toIndex, 0, doc);
+                        obj[opt.name].splice(fromIndex, 1);
+                        obj[opt.name].splice(toIndex, 0, doc);
 
                     }
 
@@ -198,10 +244,16 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
         },
         _dataChanged: function (change) {
-            if (this._receivingRemoteChanges || this._receivingLocalChanges) {
+            this._log('data changed', change);
+            
+            if (!this.autoupdate) {
+                this._log('Autoupdate disabled!')
                 return;
             }
-            console.log('data changed', change);
+            if (this._receivingRemoteChanges || this._receivingLocalChanges) {
+                this._log('receiving changes local, remote',this._receivingLocalChanges, this._receivingRemoteChanges )
+                return;
+            }
             this._localDataChanged(change);
         },
         _localDataChanged(change) {
@@ -228,31 +280,43 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
             path.splice(0, 2);
 
             if (_.contains(this._unsupportedPath, path[0])) {
-                return console.log('Unspported path for autoupdate', path[0]);
+                return this._log('Unspported path for autoupdate', path[0]);
             }
 
             var remoteKey = path.join('.');
-            console.log('key', key)
-            console.log('remote key', remoteKey);
+            this._log('key', key)
+            this._log('remote key', remoteKey);
 
             if (remoteKey.indexOf('#') > -1) {
-                return console.log('Unsupported autoupdate with this path. Update manually');
+                return this._log('Unsupported autoupdate with this path. Update manually');
             }
 
             var value = Polymer.Collection.get(change.base).getItem(key);
-            console.log('doc changed', value)
+            this._log('doc changed', value)
 
             var setModifier = {};
 
 
             setModifier[remoteKey] = change.value;
-            console.log(setModifier);
-            var res = Mongo.Collection.get(this.query.collName).update({
+            this._log(setModifier);
+            var res = Mongo.Collection.get(this.query.find().collName).update({
                 _id: value._id
             }, {
                     $set: setModifier
                 })
-            console.log('result of update', res);
+            this._log('result of update', res);
+        },
+        _log: function () {
+            var args;
+            if (this.log) {
+                args = Array.prototype.slice.call(arguments).map(function (arg) {
+                    if (arg && typeof arg.val === 'function') {
+                        return arg.val();
+                    }
+                    return arg;
+                });
+                console.log.apply(console, args);
+            }
         }
     });
 })();

@@ -9,17 +9,45 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 -->
 
 <link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="../../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../../bower_components/iron-form/iron-form.html">
+<link rel="import" href="../../bower_components/iron-flex-layout/classes/iron-flex-layout.html">
+
+
+
+
 
 <link rel="import" href="../todo-list/todo-list.html">
 <link rel="import" href="../todo-input/todo-input.html">
 
 
+
 <dom-module id="todo-view">
     <template>
+        <!--<form is="iron-form" id="form" method="post" action="/" class="layout vertical">
+            <paper-input name="name" label="name"></paper-input>
+            <paper-input name="address" label="address"></paper-input>
+            <div class="layout horizontal">
+            <paper-dropdown-menu name="prest" label="Dinosaurs">
+                <paper-listbox class="dropdown-content" attr-for-selected="value" selected="{{sel}}">
+                    <paper-item value="testval">allosaurus</paper-item>
+                    <paper-item value="bval">brontosaurus</paper-item>
+                    <paper-item value="cval">carcharodontosaurus</paper-item>
+                    <paper-item value="dval">diplodocus</paper-item>
+                </paper-listbox>
+            </paper-dropdown-menu>
+            <span clas="flex"></span>
+            </div>
+            <paper-button raised type="submit" on-click="submit">Submit</paper-button>
+        </form>
+
+        <div>selected: {{sel}}</div>-->
         <todo-list todos="{{todos}}" on-delete-todo="deleteTodo" filter-by="{{filterBy}}"></todo-list>
         <div hidden$="{{_hide(filterBy)}}">
             <todo-input on-add-todo="addTodo"></todo-input>
         </div>
+
 
     </template>
     <script>
@@ -39,9 +67,20 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 notify: true
             }
         },
+        todo:{
+            type: Object,
+            notify: true  
+        },
+        ready: function () {
+            var self = this;
+            // this.$.form.addEventListener('iron-form-presubmit', function (event) {
+            //     event.preventDefault();
+            //     self.submitForm(event);
+            // });
+        },
         clearTodos: function () {
             window.console.log('TODO view cleanring todos...');
-            _.each(_.filter(this.todos, (todo) => todo.isComplete), (todo)=> Todos.remove(todo._id));
+            _.each(_.filter(this.todos, (todo) => todo.isComplete), (todo) => Todos.remove(todo._id));
 
             // for (var i = 0; i < this.todos.length; i++) {
             //     var todo = this.todos[i];
@@ -70,6 +109,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         },
         _hide: function (filter) {
             return filter === 'completed';
+        },
+        submitForm: function (event) {
+            console.log('Submitting form...', this.$.form.serialize())
+        },
+        submit: function(){
+            this.$.form.submit();
         }
 
 

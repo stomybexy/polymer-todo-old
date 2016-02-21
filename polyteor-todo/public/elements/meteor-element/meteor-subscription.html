@@ -1,0 +1,163 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="meteor-query.html">
+
+
+<dom-module id="meteor-subscription">
+    <template>
+        <meteor-query query="{{query}}" data="{{data}}" log="{{log}}" autoupdate="{{autoupdate}}"></meteor-query>
+    </template>
+    <script>
+        (function () {
+    'use strict';
+
+    Polymer({
+        is: 'meteor-subscription',
+        properties: {
+            data: {
+                type: Array,
+                notify: true                             
+            },
+            name: {
+                type: String,
+                value: null,
+                notify: true,
+                reflectToAttribute: true
+            },
+            args:{
+                type: Array,
+                notify: true,
+                value: null
+            },
+            sub: {
+                type: Object,
+                computed: 'computeSub(name, args)' ,
+                notify: true,
+                observer: '_subChanged' 
+            },
+            subReady: {
+                type: Boolean,
+                notify: true,
+                reflectToAttribute: true,
+                readOnly: true,
+                value: false
+            },
+            query: {
+                type: Object,
+                notify: true,
+                computed: 'computeQuery(subReady, name, args)'
+            },
+            /**
+             * If true, verbose debugging information will be printed to the console.
+             */
+            log: {
+                type: Boolean,
+                value: false,
+                reflectToAttribute: true
+            },
+            autoupdate: {
+                type: Boolean,
+                value: false,
+                relfectToAttribute: true
+            }
+        },
+
+        computeSub: function(name, args){
+            return {
+                name: name,
+                args: args
+            }
+        },
+        computeQuery: function(ready, name, args){
+            // if(!ready){
+            //     return;
+            // }
+            var self = this;
+            if(!name){
+                return;
+            }
+            var query = {};
+            
+            query.find = function(){
+                
+                var parents = Array.prototype.slice.call(arguments) || [];
+                // console.log('In find concat', parents, parents.concat)
+                var opt = Meteor.apply(name, parents.concat(args || []), { returnStubValue: true });
+                
+                return {
+                    selector: opt.selector,
+                    sort: opt.sort,
+                    fields: opt.fields,
+                    limit: opt.limit,
+                    skip: opt.skip,
+                    collName: opt.collName,
+                    single: opt.single,
+                    name: opt.name,
+                    children: _.map(opt.children, function(child){
+                        return self.computeQuery(ready, name + '.' + child, args);
+                    })
+                }
+            };
+            return query;
+            
+        },
+        
+        created: function(){
+            // this.autorunDep;
+        },
+        
+        ready: function(){
+            var self = this;
+            this._log('Subscription to', this.sub)
+            // Tracker.autorun(function(){
+               if(!self.sub || !self.sub.name){
+                   return;
+               }
+               self._log("Subscribing...", [self.sub.name])
+               var args = [self.sub.name].concat(self.sub.args ||[]);
+               args = args.concat([function(){
+                   self._log('Subscription is ready');
+                   self._setSubReady(true);
+               }]);
+               self._log('Calling subscribe with', args);
+               Meteor.subscribe.apply(Meteor, args);
+               
+            // });
+        },
+
+        attached: function () {
+            this._log('meteor-subscription was attached');
+        },
+
+        detached: function () {
+            this._log('meteor-subscription was detached');
+
+        },
+        _subChanged: function(){
+         this._log('_sub changed', this.sub)
+        },
+        _log: function () {
+            var args;
+            if (this.log) {
+                args = Array.prototype.slice.call(arguments).map(function (arg) {
+                    if (arg && typeof arg.val === 'function') {
+                        return arg.val();
+                    }
+                    return arg;
+                });
+                console.log.apply(console, args);
+            }
+        }
+    });
+})();
+    </script>
+</dom-module>

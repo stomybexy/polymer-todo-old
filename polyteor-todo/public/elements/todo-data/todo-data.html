@@ -15,6 +15,12 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 <link rel="import" href="../../bower_components/neon-animation/animations/fade-out-animation.html">
 <link rel="import" href="../../bower_components/paper-dialog/paper-dialog.html">
 <link rel="import" href="../meteor-element/meteor-query.html">
+<link rel="import" href="../meteor-element/meteor-collection.html">
+<link rel="import" href="../meteor-element/meteor-object.html">
+<link rel="import" href="../meteor-element/meteor-subscription.html">
+
+
+
 
 
 
@@ -76,7 +82,11 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
         </firebase-auth>
         <firebase-collection data="{{todos}}" location="{{userLocation}}">
         </firebase-collection>-->
-        <meteor-query query="{{query}}" data="{{todos}}"></meteor-query>
+        <!--<meteor-collection collection="todos" data="{{todos}}" log autoupdate></meteor-collection>-->
+        <!--<meteor-object collection="todos" data="{{todo}}" object-id="MC7znQnm2FGbeNoNF" selector="{{selector}}" log autoupdate></meteor-object>-->
+        
+        <!--<meteor-query query="{{query}}" data="{{todos}}" autoupdate log data-as-object="{{todo}}"></meteor-query>-->
+        <meteor-subscription name="todos" data="{{todos}}" log autoupdate></meteor-subscription>
     </template>
 
     <script>
@@ -93,42 +103,63 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 notify: true,
                 type: Array
             },
+            todo: {
+                type: Object,
+                notify: true,
+                observer: '_todoChanged'
+            },
+            selector: {
+                type: Object,
+                value: {
+                    // label: 'blabla'
+                }
+            },
+            allTodos: {
+                type: Array,
+                notify: true
+            },
             query: {
                 value: function () {
                     return {
                         find: function () {
                             return {
-
+                                selector: {
+                                    _id: 'MC7znQnm2FGbeNoNF'
+                                },
                                 sort: {
                                     label: 1
-                                }
-                            }
-                        },
-                        collName: 'todos',
-                        children: [
-                            {
-                                find: function (todo) {
-                                    return {
-                                        selector: {
-                                            todoId: todo._id
+                                },
+                                single: true,
+                                collName: 'todos',
+                                children: [
+                                    {
+                                        find: function (todo) {
+                                            return {
+                                                selector: {
+                                                    todoId: todo._id
+                                                },
+                                                collName: 'comments',
+                                                name: 'comments'
+                                            }
+                                        },
+
+                                    }, {
+                                        find: function (todo) {
+                                            return {
+                                                selector: {
+                                                    _id: todo.owner
+                                                },
+                                                collName: 'users',
+                                                name: 'user',
+                                                single: true
+                                            }
                                         }
                                     }
-                                },
-                                collName: 'comments',
-                                name: 'comments'
-                            }, {
-                                find: function (todo) {
-                                    return {
-                                        selector: {
-                                            _id: todo.owner
-                                        }
-                                    }
-                                },
-                                collName: 'users',
-                                name: 'user',
-                                single: true
+                                ]
                             }
-                        ]
+                        }
+
+
 
                     }
                 },
@@ -143,7 +174,15 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
                 }
             },
         },
-
+        observers: [
+            '_allTodosChanged(allTodos.*)'
+        ],
+        _todoChanged: function () {
+            console.log('Todo changed', this.todo);
+        },
+        _allTodosChanged: function () {
+            console.log('All todos', this.allTodos);
+        },
         _userChanged: function (user) {
             console.log('user', user);
         },

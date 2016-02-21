@@ -1,0 +1,135 @@
+<!--
+@license
+Copyright (c) 2015 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
+-->
+
+<link rel="import" href="../../bower_components/polymer/polymer.html">
+<link rel="import" href="meteor-collection.html">
+
+
+<dom-module id="meteor-object">
+    <template>
+        <meteor-collection collection="{{collection}}" selector="{{_selector}}" data="{{_data}}" sort="{{sort}}" fields="{{fields}}"
+        limit="{{limit}}" skip="{{skip}}" autoupdate="{{autoupdate}}" log="{{log}}"></meteor-collection>
+    </template>
+    <script>
+        (function () {
+    'use strict';
+
+    Polymer({
+        is: 'meteor-object',
+        properties: {
+            data: {
+                type: Object,
+                notify: true,
+                readOnly: true,
+                computed: 'computeObject(_data)'
+
+            },
+            _data: {
+                type: Array,
+                value: function(){
+                    return []
+                },
+                notify: true
+            },
+            collection:{
+                type: String,
+                reflectToAttribute: true,
+                notify: true,
+                value: null
+            },
+            objectId: {
+                type: Object,
+                notify: true,
+                value: null
+            },
+            selector: {
+                type: Object,
+                notify: true,
+                value: null
+            },
+            _selector: {
+                 type: Object,
+                 notify: true,
+                computed: "computeSelector(objectId, selector)"
+            },
+            sort: {
+                type: Object,
+                notify: true,
+                value: null
+            },
+            limit: {
+                type: Number,
+                notify: true,
+                reflectToAttribute: true,
+                value: null
+            },
+            fields: {
+                type: Object,
+                notify: true,
+                value: null
+            },
+            skip: {
+                type: Number,
+                notify: true,
+                value: null,
+                reflectToAttribute: true
+            },
+            /**
+             * If true, verbose debugging information will be printed to the console.
+             */
+            log: {
+                type: Boolean,
+                value: false,
+                reflectToAttribute: true
+            },
+            autoupdate: {
+                type: Boolean,
+                value: false,
+                relfectToAttribute: true
+            }
+        },
+        computeObject: function(_data){
+            if(!_data)
+            {
+                return null;
+            }
+            return _data[0];
+        },
+        computeSelector: function(id, selector){
+            if(id){
+                return _.extend({_id: id}, selector);
+            }
+            return _.extend({}, selector);
+        },
+
+        attached: function () {
+            this._log('meteor-collection was attached');
+        },
+
+        detached: function () {
+            this._log('meteor-collection was detached');
+
+        },
+        _log: function () {
+            var args;
+            if (this.log) {
+                args = Array.prototype.slice.call(arguments).map(function (arg) {
+                    if (arg && typeof arg.val === 'function') {
+                        return arg.val();
+                    }
+                    return arg;
+                });
+                console.log.apply(console, args);
+            }
+        }
+    });
+})();
+    </script>
+</dom-module>
